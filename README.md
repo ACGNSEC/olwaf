@@ -19,25 +19,25 @@
 匹配条件：字符串包含/不包含/相等/不等/正则，长度相等/大小于、ip匹配/网段
 
 匹配粒度：
-URI\r\n
-解码后路径
-Query
-GET参数
-Method
-Host
-完整Cookie
-Cookie参数
-User Agent
-Referer
-Content-Type
-Origin
-Session
-完整HTTP header
-HTTP请求头
-HTTP请求头长度
-HTTP请求体长度
-POST参数
-上传的文件名
-完整body
-HTTP状态码
-响应内容
+URI  
+解码后路径  
+Query  
+GET参数  
+Method  
+Host  
+完整Cookie  
+Cookie参数  
+User Agent  
+Referer  
+Content-Type  
+Origin  
+Session  
+完整HTTP header  
+HTTP请求头  
+HTTP请求头长度  
+HTTP请求体长度  
+POST参数  
+上传的文件名  
+完整body  
+HTTP状态码  
+响应内容  
