@@ -4,34 +4,37 @@ local request     = require "owasp.request"
 local decode      = require "owasp.decode"
 local optl         = require("optl")
 
-local crs_transformtypes = {[1] = "uri_decode", [2] = "html_decode", [3] = "replace_comments", [4] = "hex_decode", [5] = "remove_nulls" ,[6] = "js_decode", [7] = "css_decode", [8] = "lowercase", [9] = "normalise_path", [10] = "cmd_line", [11] = "compress_whitespace"}
-local crs_transformtypes_key = true
+local crs_decode_types = {[1] = "uri_decode", [2] = "html_decode", [3] = "replace_comments", [4] = "hex_decode", [5] = "remove_nulls" ,[6] = "js_decode", [7] = "css_decode", [8] = "lowercase", [9] = "normalise_path", [10] = "cmd_line", [11] = "compress_whitespace"}
+local crs_decode_switch = true
 
-local function multiple_decode(collection, transform)
+
+
+
+local function multiple_decode(dataset, decode_array)
     local t = {}
-    if transform ~= nil and collection ~= nil then
-        if type(transform) == "table" then
-            t = collection
+    if decode_array ~= nil and dataset ~= nil then
+        if type(decode_array) == "table" then
+            t = dataset
 
-            for k, v in ipairs(transform) do
-                t = multiple_decode(t, transform[k])
+            for k, v in ipairs(decode_array) do
+                t = multiple_decode(t, decode_array[k])
             end
         else
-             --如果collection是table类型 循环把value添加到t表中
-            if type(collection) == "table" then
-                for k, v in pairs(collection) do
-                    if type(collection[k]) == "string" then 
-                        t[k] = multiple_decode(collection[k], transform)
+             --如果dataset是table类型 循环把value添加到t表中
+            if type(dataset) == "table" then
+                for k, v in pairs(dataset) do
+                    if type(dataset[k]) == "string" then 
+                        t[k] = multiple_decode(dataset[k], decode_array)
                     end
                 end
             else
                 --否则直接返回
-                --如果collection为nil 不进行transform
-                if not collection then
-                    return collection 
+                --如果dataset为nil 不进行transform
+                if not dataset then
+                    return dataset 
                 end
                 
-                return decode.operation[transform](collection)
+                return decode.operation[decode_array](dataset)
             end
         end
         return t
@@ -60,18 +63,18 @@ _M.parse_phase = {
 
         --query_string 为?后面的参数
         local query_string        = ngx.var.query_string
-        local query_str_size = query_string and #query_string or 0
-        local body_size = ngx.var.http_content_length and tonumber(ngx.var.http_content_length) or 0
+        local query_str_size      = query_string and #query_string or 0
+        local body_size           = ngx.var.http_content_length and tonumber(ngx.var.http_content_length) or 0
 
-        if crs_transformtypes_key == true then 
-            dataset.URI               = multiple_decode(ngx.var.uri, crs_transformtypes)
+        if crs_decode_switch == true then 
+            dataset.URI               = multiple_decode(ngx.var.uri, crs_decode_types)
             dataset.URI_ARGS          = request_uri_args
-            dataset.QUERY_STRING      = multiple_decode(query_string, crs_transformtypes)
-            dataset.REQUEST_URI       = multiple_decode(request_uri, crs_transformtypes)
-            dataset.REQUEST_URI_RAW   = multiple_decode(request_uri_raw, crs_transformtypes)
-            dataset.COOKIES           = multiple_decode(request_cookies, crs_transformtypes)
-            dataset.REQUEST_BODY      = multiple_decode(request_body, crs_transformtypes)
-            dataset.REQUEST_ARGS      = multiple_decode(request_common_args, crs_transformtypes)
+            dataset.QUERY_STRING      = multiple_decode(query_string, crs_decode_types)
+            dataset.REQUEST_URI       = multiple_decode(request_uri, crs_decode_types)
+            dataset.REQUEST_URI_RAW   = multiple_decode(request_uri_raw, crs_decode_types)
+            dataset.COOKIES           = multiple_decode(request_cookies, crs_decode_types)
+            dataset.REQUEST_BODY      = multiple_decode(request_body, crs_decode_types)
+            dataset.REQUEST_ARGS      = multiple_decode(request_common_args, crs_decode_types)
             dataset.REQUEST_LINE      = multiple_decode(request_var,alltransform)
         else
             dataset.URI               = ngx.var.uri
@@ -79,8 +82,8 @@ _M.parse_phase = {
             dataset.QUERY_STRING      = query_string
             dataset.REQUEST_URI       = request_uri
             dataset.REQUEST_URI_RAW   = request_uri_raw
-            dataset.COOKIES            = request_cookies
-            dataset.REQUEST_BODY      = request_body, crs_transformtypes
+            dataset.COOKIES           = request_cookies
+            dataset.REQUEST_BODY      = request_body, crs_decode_types
             dataset.REQUEST_ARGS      = request_common_args
             dataset.REQUEST_LINE      = request_var
         end
@@ -91,7 +94,7 @@ _M.parse_phase = {
         dataset.SERVERIP          = ngx.var.server_addr
         dataset.http_host         = ngx.unescape_uri(ngx.var.http_host)
 
-        local server_name             = ngx.var.server_name
+        local server_name         = ngx.var.server_name
         dataset.SERVER_NAME       = server_name
         dataset.HOST              = server_name
         dataset.METHOD            = request_method
@@ -101,22 +104,19 @@ _M.parse_phase = {
 
         local headers_data
         if ngx.var.server_protocol ~= "HTTP/2.0" then
-            headers_data          = ngx.unescape_uri(ngx.req.raw_header(false))
-            dataset.headers_data = headers_data
+            headers_data           = ngx.unescape_uri(ngx.req.raw_header(false))
+            dataset.HEADERS_DATA   = headers_data
         end
 
-        --dataset.args      = ngx.req.get_uri_args()
-        dataset.ARGS_DATA = ngx.unescape_uri(optl.get_table(args))
-
-        dataset.TX                = ctx.storage["TX"] or {} 
-        dataset.NGX_VAR           = ngx.var
-        dataset.MATCHED_VARS      = {}
-        dataset.MATCHED_VAR_NAMES = {}
-        dataset.SCORE_THRESHOLD   = 5
+        --dataset.args             = ngx.req.get_uri_args()
+        dataset.ARGS_DATA          = ngx.unescape_uri(optl.get_table(args))
+        dataset.NGX_VAR            = ngx.var
+        dataset.MATCHED_VARS       = {}
+        dataset.MATCHED_VAR_NAMES  = {}
         dataset.ARGS_COMBINED_SIZE = query_str_size + body_size
     end,
     header_filter = function(dataset)
-        local response_headers = ngx.resp.get_headers()
+        local response_headers   = ngx.resp.get_headers()
         dataset.RESPONSE_HEADERS = response_headers
         dataset.STATUS           = ngx.status
     end,
