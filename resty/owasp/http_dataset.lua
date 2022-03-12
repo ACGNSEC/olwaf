@@ -42,7 +42,7 @@ local function multiple_decode(dataset, decode_array)
 end
 
 
-_M.parse_phase = {
+_M.nginx_phase = {
     access = function(dataset, ctx)
  
         local request_headers     = ngx.req.get_headers()
